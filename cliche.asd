@@ -34,6 +34,8 @@
 	       :cl-json
 	       :cl-markup
 	       :clutch
+	       :parenscript
+	       :cl-gd
 	       :tagger
 	       :hunchentoot
 	       )
