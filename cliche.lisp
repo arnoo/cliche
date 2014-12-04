@@ -41,27 +41,40 @@
         (:body 
 	   "Hey there !"
 	   (:div :id "thumbs" "")
-	   (:div :id "viewer"
-		 (:div :id "viewer-controls"
-		       (:div :id "viewer-previous" "Previous")
-		       (:div :id "viewer-next" "Next")
-		       (:div :id "viewer-fit" "Fit")
-		       )
-		 (:div :id "viewport"
-		       (:div :id "viewer-image"
-			(:img :src "/pics/home/3790"))))
+	   ;(:div :id "viewer"
+	   ;	 (:div :id "viewer-controls"
+	   ;	       (:div :id "viewer-previous" "Previous")
+	   ;	       (:div :id "viewer-next" "Next")
+	   ;	       (:div :id "viewer-fit" "Fit"))
+	   ;	 (:div :id "viewport"
+	   ;	       (:div :id "viewer-image"
+	   ;		(:img :src "/pics/home/3790"))))
 	   (:script :type "text/javascript" :src "js/jquery-1.10.2.min.js" "")
 	   (:script :type "text/javascript" :src "js/jquery.panzoom.min.js" "")
+	   (:script :type "text/javascript" :src "js/lb.js" "")
 	   (:script :type "text/javascript" (js-interface)))))))
 
 (defjs interface
+    ;(defun process-scroll ()
+    ;  (chain ($ "html") (scroll-t--op))
+    ;  (chain ($ "html") (height)))
+    ;(let ((scroll-timeout nil))
+    ;	(chain ($ "html")
+    ;	       (scroll (lambda (evt)
+    ;		  (when (= (chain evt event-phase) 3)
+    ;		    (when scroll-timeout
+    ;		          (window.cancel-t--imeout scroll-timeout) )
+    ;		    (window.set-t--imeout 100 process-scroll))))))
     ;($.get "/pics?col=home"
     ;	   (lambda (rep)
     ;	      (chain ($ "#thumbs") (empty))
-    ;	      (loop for pic in rep
-    ;		    do (let ((img ($ "<img class='thumb' width='100' height='100>")))
-    ;			 (chain img (attr "src" pic)
-    ;				(append-t-o ($ "#thumbs")))))))
+   ; 	      (loop for id in rep
+    	      (loop for id from 0 to 200
+    		    do (let ((div ($ (+ "<div class='thumb-box'><img data-src='/thumbs/home/" id "'></div>"))))
+			 (chain div (append-t-o ($ "#thumbs")))))
+
+  ;))
+    ;(chain ($ "#thumbs img") (lazyload (create :data_attribute "src")))
     (chain ($ "#viewer-image")
 	   (panzoom)))
 
@@ -79,7 +92,6 @@
        "/"
        (md5 (str "file://" filename))
        ".png"))
-;                        var thumbsPath = process.env['HOME']+'/.thumbnails/normal/';
 
 (defun get-thumb-path (filename &key large)
   (gd:with-image-from-file (image filename)
@@ -145,7 +157,7 @@
 (defun api-list-files ()
   (let ((col (ht:get-parameter "col")))
     (setf (ht:content-type*) "text/json")
-    (->json (mapcar #'str (t:list-files {*cols* col})))))
+    (t:list-files {*cols* col} :format :bitseq)))
 
 (defun start ()
 ;  (t:update-master-index {*cols* "home"})
