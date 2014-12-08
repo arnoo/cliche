@@ -29,14 +29,16 @@
   :serial t
   :version "0.1"
   :components ((:file "cliche"))
-  :depends-on (:zpb-exif
-	       :anaphora
-	       :cl-json
-	       :cl-markup
-	       :clutch
-	       :parenscript
-	       :cl-gd
-	       :tagger
-	       :hunchentoot
-	       )
+  :depends-on (
+               :anaphora
+               :cl-gd
+               :cl-json
+               :cl-markup
+               :clutch
+               :parenscript
+               :puri
+               :hunchentoot
+               :tagger
+               :zpb-exif
+              )
   )

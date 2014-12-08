@@ -1,4 +1,4 @@
-var settings = { 'delay' : 200, 'bufferPages' : 1 , 'placeholder' : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC" };
+var settings = { 'delay' : 200, 'bufferPages' : 1 , 'placeholder' : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC", 'srcTransform' : function (x) { return "/thumbs/home/"+x } };
 var cols;
 var pending = {};
 
@@ -15,7 +15,7 @@ function load() {
     var self = this;
     var img = $(self);
     console.log("loading"+img.data("src"));
-    img.attr("src", img.data("src"));
+    img.attr("src", settings.srcTransform ? settings.srcTransform(img.data("src")) : img.data("src"));
     pending[self] = true;
     img.load(function () {delete(pending[self])});
 }

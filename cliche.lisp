@@ -36,47 +36,97 @@
                (:meta :name "viewport" :content "width=device-width, initial-scale=1.0")
                ; Place favicon.ico & apple-touch-icon.png in the root of your domain and delete these references (?)
                ; (:link :rel "shortcut icon"    :href "/favicon.ico")
-               (:link :rel "stylesheet" :type "text/css" :href "/style.css")
+               (:link :rel "stylesheet" :type "text/css" :href (full-url "/style.css"))
                ; (:link :rel "apple-touch-icon" :href "/apple-touch-icon.png"))
         (:body 
-	   "Hey there !"
 	   (:div :id "thumbs" "")
-	   ;(:div :id "viewer"
-	   ;	 (:div :id "viewer-controls"
-	   ;	       (:div :id "viewer-previous" "Previous")
-	   ;	       (:div :id "viewer-next" "Next")
-	   ;	       (:div :id "viewer-fit" "Fit"))
-	   ;	 (:div :id "viewport"
-	   ;	       (:div :id "viewer-image"
-	   ;		(:img :src "/pics/home/3790"))))
-	   (:script :type "text/javascript" :src "js/jquery-1.10.2.min.js" "")
-	   (:script :type "text/javascript" :src "js/jquery.panzoom.min.js" "")
-	   (:script :type "text/javascript" :src "js/lb.js" "")
+	   (:div :id "viewer"
+	   	 (:div :id "viewer-controls"
+	   	       (:div :id "viewer-back" "Back")
+	   	       (:div :id "viewer-previous" "Previous")
+	   	       (:div :id "viewer-next" "Next")
+	   	       (:div :id "viewer-fit" "Fit"))
+	   	 (:div :id "viewport"
+	   	       (:div :id "viewer-image"
+	   		   (:img :src "/pics/home/3790"))))
+	   (:script :type "text/javascript" :src (full-url "/js/jquery-1.10.2.min.js") "")
+	   (:script :type "text/javascript" :src (full-url "/js/jquery.panzoom.min.js") "")
+	   (:script :type "text/javascript" :src (full-url "/js/lb.js") "")
 	   (:script :type "text/javascript" (js-interface)))))))
 
+(defun full-url (url)
+  (if (boundp 'ht:*request*)
+      url
+      (str "http://localhost:4242" url)))
+
 (defjs interface
-    ;(defun process-scroll ()
-    ;  (chain ($ "html") (scroll-t--op))
-    ;  (chain ($ "html") (height)))
-    ;(let ((scroll-timeout nil))
-    ;	(chain ($ "html")
-    ;	       (scroll (lambda (evt)
-    ;		  (when (= (chain evt event-phase) 3)
-    ;		    (when scroll-timeout
-    ;		          (window.cancel-t--imeout scroll-timeout) )
-    ;		    (window.set-t--imeout 100 process-scroll))))))
+   (defun full-url (url)
+     (if (= (chain window location protocol)
+	    "file:")
+	 (+ "http://localhost:4242" url)
+	 url))
     ;($.get "/pics?col=home"
     ;	   (lambda (rep)
     ;	      (chain ($ "#thumbs") (empty))
    ; 	      (loop for id in rep
-    	      (loop for id from 0 to 200
-    		    do (let ((div ($ (+ "<div class='thumb-box'><img data-src='/thumbs/home/" id "'></div>"))))
-			 (chain div (append-t-o ($ "#thumbs")))))
-
-  ;))
+  (defun view-image (col imgid)
+     (chain ($ "#viewer-image img")
+	    (attr "src" (+ "/pics/" col "/" imgid)))
+     (chain ($ "#viewer-image")
+	    (panzoom "resetDimensions")))
+  (defun viewer-previous ()
+    ;TODO
+    )
+  (defun viewer-next ()
+    ;TODO
+    )
+  (defun viewer-fit ()
+    ;TODO
+    )
+  (defun init ()
+     (chain ($ "#viewer")
+            (hide))
+     (chain ($ "#viewer-image")
+            (panzoom))
+     (chain ($ window)
+	    (resize (lambda () (chain ($ "#viewer-image")
+                                 (panzoom "resetDimensions")))))
+     (chain ($ "body")
+            (on "click"
+            	 ".thumb-box img"
+            	 (lambda () (view-image "home" (chain ($ this) (data "src")))
+            	       (chain ($ "#thumbs")
+            		      (hide))
+            	       (chain ($ "#viewer")
+            	              (show)))))
+     (chain ($ "#viewer-fit")
+	    'viewer-fit)
+     (chain ($ "#viewer-previous")
+	    'viewer-previous)
+     (chain ($ "#viewer-next")
+	    'viewer-next)
+     (chain ($ "#viewer-back")
+            (click (lambda ()
+                   (chain ($ "#viewer")
+                          (hide))
+            	   (chain ($ "#thumbs")
+            	          (show)))))
+     (let ((newhtml ""))
+        (loop for id from 0 to 200
+     	 do (setf newhtml (+ newhtml "<div class='thumb-box'><img data-src='" id "'></div>")))
+         (chain ($ newhtml)
+                (append-t-o ($ "#thumbs")))))
+   (chain ($ document)
+ 	  (ready init))
     ;(chain ($ "#thumbs img") (lazyload (create :data_attribute "src")))
-    (chain ($ "#viewer-image")
-	   (panzoom)))
+    )
+
+(defun web-index-to-disk ()
+    (awith "/tmp/cliche-index.html"
+      (ungulp it
+	      (web-index)
+	      :if-exists :supersede)
+      it))
 
 (defun web-thumb ()
   (let* ((elts (split "/" (ht:request-uri*)))
