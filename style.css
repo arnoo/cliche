@@ -1,0 +1,43 @@
+html, body, #viewer, #viewport
+    {
+    height:100%;
+    width:100%;
+    margin: 0;
+    padding: 0;
+    }
+
+#thumbs
+    {
+    overflow: auto;
+    position: absolute;
+    top: 0;
+    padding-top: 60px;
+    }
+
+.thumb-box
+    {
+    border: 1px solid black;
+    width: 128px;
+    height: 128px;
+    display: inline-block;
+    position: relative;
+/*    vertical-align: middle; 
+    text-align: center; */
+    }
+
+#thumbs img
+    {
+    max-width: 128px;
+    max-height: 128px;
+    position:absolute;
+    top:0;
+    bottom:0;
+    left:0;
+    right:0;
+    margin:auto;
+    }
+
+#viewer-controls div
+    {
+    display: inline-block;
+    }

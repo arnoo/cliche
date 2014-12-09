@@ -1,8 +1,8 @@
 var settings = { 'delay' : 200, 'bufferPages' : 1 , 'placeholder' : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC", 'srcTransform' : function (x) { return "/thumbs/home/"+x } };
 var cols;
 var pending = {};
-
 var timeoutHandle;
+var container, viewport;
 
 function deferUpdate() {
     if (timeoutHandle!==undefined)
@@ -27,15 +27,14 @@ function unload(img) {
 }
 
 function update() {
-    var viewport = $("#thumbs");
-    var firstPicBox = viewport.find("div:first-child");
+    var firstPicBox = container.find("div:first-child");
     var picWidth = firstPicBox.width();
     var picHeight = firstPicBox.width();
     cols = Math.floor(viewport.width()/picWidth);
     var linesPerPage = Math.floor(viewport.height()/picHeight);
 
-    var firstVisibleLine = Math.floor(viewport.scrollTop()/picHeight);
-    var lastVisibleLine = Math.floor((viewport.scrollTop()+viewport.height())/picHeight);
+    var firstVisibleLine = Math.floor((viewport.scrollTop()-container.offset().top-60)/picHeight);
+    var lastVisibleLine = Math.floor((viewport.scrollTop()-container.offset().top-60+viewport.height())/picHeight);
 
     for (i in pending) {if (pending[i]) unload($(i))};
 
@@ -54,7 +53,11 @@ function maplines(from, to, fn) {
     $("#thumbs img"+fromSelector+":lt("+to*cols+")").each(fn);
 }
 
-$("#thumbs img").attr("src", settings.placeholder);
-$("#thumbs").scroll(deferUpdate);
-$("window").resize(deferUpdate);
-update();
+function initlb(_container, _viewport) {
+    container = _container;
+    viewport = _viewport;
+    container.find("img").attr("src", settings.placeholder);
+    viewport.scroll(deferUpdate);
+    $(window).resize(deferUpdate);
+    update();
+}

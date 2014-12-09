@@ -39,7 +39,13 @@
                (:link :rel "stylesheet" :type "text/css" :href (full-url "/style.css"))
                ; (:link :rel "apple-touch-icon" :href "/apple-touch-icon.png"))
         (:body 
-	   (:div :id "thumbs" "")
+	   (:div :id "lightbox"
+	         (:input :placeholder "Tags, dates...")
+	         (:div :id "thumbs" :contextmenu "thumbmenu" ""))
+     (:menu :type "context" :id "thumbmenu"
+	          (:menu :label "Add tag..." :icon "/images/share_icon.gif"
+                   (:menuitem :label "X" :icon "/images/twitter_icon.gif" :onclick "add")
+                   (:menuitem :label "New tag..." :icon "/images/facebook_icon16x16.gif" :onclick "")))
 	   (:div :id "viewer"
 	   	 (:div :id "viewer-controls"
 	   	       (:div :id "viewer-back" "Back")
@@ -95,31 +101,30 @@
             (on "click"
             	 ".thumb-box img"
             	 (lambda () (view-image "home" (chain ($ this) (data "src")))
-            	       (chain ($ "#thumbs")
+            	       (chain ($ "#lightbox")
             		      (hide))
             	       (chain ($ "#viewer")
             	              (show)))))
      (chain ($ "#viewer-fit")
-	    'viewer-fit)
+	    viewer-fit)
      (chain ($ "#viewer-previous")
-	    'viewer-previous)
+	    viewer-previous)
      (chain ($ "#viewer-next")
-	    'viewer-next)
+	    viewer-next)
      (chain ($ "#viewer-back")
             (click (lambda ()
                    (chain ($ "#viewer")
                           (hide))
-            	   (chain ($ "#thumbs")
+            	   (chain ($ "#lightbox")
             	          (show)))))
      (let ((newhtml ""))
         (loop for id from 0 to 200
      	 do (setf newhtml (+ newhtml "<div class='thumb-box'><img data-src='" id "'></div>")))
          (chain ($ newhtml)
-                (append-t-o ($ "#thumbs")))))
+                (append-t-o ($ "#thumbs"))))
+     (initlb ($ "#thumbs") ($ window)))
    (chain ($ document)
- 	  (ready init))
-    ;(chain ($ "#thumbs img") (lazyload (create :data_attribute "src")))
-    )
+ 	  (ready init)))
 
 (defun web-index-to-disk ()
     (awith "/tmp/cliche-index.html"
@@ -167,7 +172,6 @@
 	;TODO: optipng / pngquant
 	home-thumb-path))))
  
-
 (defun home-thumb-path (filename &key large)
   (str (getenv "HOME")
        "/.thumbnails/"
