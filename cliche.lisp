@@ -1,6 +1,6 @@
 (defpackage :cliche
   (:use     #:cl #:anaphora #:clutch #:parenscript #:cl-markup)
-  (:shadowing-import-from #:clutch #:while #:join #:in))
+  (:shadowing-import-from #:clutch #:while #:join #:in #:acond #:it))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (rename-package :hunchentoot :hunchentoot '(:ht :tnbl))
@@ -57,6 +57,8 @@
 	   		   (:img :src "/pics/home/3790"))))
 	   (:script :type "text/javascript" :src (full-url "/js/jquery-1.10.2.min.js") "")
 	   (:script :type "text/javascript" :src (full-url "/js/jquery.panzoom.min.js") "")
+	   (:script :type "text/javascript" :src (full-url "/js/contextMenu.min.js") "")
+	   (:script :type "text/javascript" :src (full-url "/js/jquery.binarytransport.js") "")
 	   (:script :type "text/javascript" :src (full-url "/js/lb.js") "")
 	   (:script :type "text/javascript" (js-interface)))))))
 
@@ -105,26 +107,36 @@
             		      (hide))
             	       (chain ($ "#viewer")
             	              (show)))))
-     (chain ($ "#viewer-fit")
-	    viewer-fit)
-     (chain ($ "#viewer-previous")
-	    viewer-previous)
-     (chain ($ "#viewer-next")
-	    viewer-next)
+     (chain ($ "#viewer-fit")      viewer-fit)
+     (chain ($ "#viewer-previous") viewer-previous)
+     (chain ($ "#viewer-next")     viewer-next)
      (chain ($ "#viewer-back")
             (click (lambda ()
-                   (chain ($ "#viewer")
-                          (hide))
-            	   (chain ($ "#lightbox")
-            	          (show)))))
-     (let ((newhtml ""))
-        (loop for id from 0 to 200
-     	 do (setf newhtml (+ newhtml "<div class='thumb-box'><img data-src='" id "'></div>")))
-         (chain ($ newhtml)
-                (append-t-o ($ "#thumbs"))))
+                      (chain ($ "#viewer")
+                             (hide))
+                      (chain ($ "#lightbox")
+                             (show)))))
+     ($.ajax (create "url" "/pics/home"
+                     "data" (create)
+                     "success" (lambda (res) (let ((bres (new (-uint8-array res)))
+                                              (newhtml ""))
+                                          (loop for i from 0 below (length bres)
+                                             do (loop for j from 0 to 7
+                                                      do (when (= (logand (ash (aref bres i) -1)
+                                                                          1)
+                                                                  1)
+                                                           (setf newhtml (+ newhtml
+                                                                            "<div class='thumb-box'><img data-src='"
+                                                                            (aref bres i)
+                                                                            "'></div>")))))
+                                          (chain ($ "#thumbs") (empty))
+                                          (chain ($ newhtml)
+                                                 (append-to ($ "#thumbs")))))
+                     "dataType" "binary"
+                     "responseType" "arraybuffer"))
      (initlb ($ "#thumbs") ($ window)))
    (chain ($ document)
- 	  (ready init)))
+          (ready init)))
 
 (defun web-index-to-disk ()
     (awith "/tmp/cliche-index.html"
@@ -196,7 +208,7 @@
           (string= (str (- (file-write-date filename) 2208988800)) it))))
 
 (defun web-img ()
-  (let* ((elts (split "/" (ht:request-uri*)))
+  (let* ((elts (remove "" (split "/" (ht:request-uri*))))
 	 (colname {elts -2})
 	 (id {elts -1})
 	 (img (t:id-file {*cols* colname} id)))
@@ -208,10 +220,20 @@
   (setf (ht:content-type*) "text/json")
   (->json (mapcar #'t:col-name (kvalues *cols*))))
 
+(defun separate (predicate list)
+    (loop for x in list
+          when (funcall predicate x)
+          collect x into a
+          else collect x into b
+          finally (return (list a b))))
+
 (defun api-list-files ()
-  (let ((col (ht:get-parameter "col")))
-    (setf (ht:content-type*) "text/json")
-    (t:list-files {*cols* col} :format :bitseq)))
+  (let* ((elts (remove "" (split "/" (ht:request-uri*))))
+         (colname {elts -1})
+         (tags (separate [char= {_ 0} #\-]
+                         (split "," (ht:get-parameter "tags")))))
+    (setf (ht:content-type*) "application/binary")
+    (t::bitseq-to-byteseq (t:list-files {*cols* colname} :-tags {tags 0} :+tags {tags 1} :format :bitseq))))
 
 (defun start ()
 ;  (t:update-master-index {*cols* "home"})
