@@ -1,6 +1,6 @@
 (defpackage :cliche
-  (:use     #:cl #:anaphora #:clutch #:parenscript #:cl-markup)
-  (:shadowing-import-from #:clutch #:while #:join #:in #:acond #:it))
+  (:use     #:cl #:clutch #:parenscript #:cl-markup)
+  (:shadowing-import-from #:clutch #:while #:join #:in))
 
 (eval-when (:load-toplevel :compile-toplevel :execute)
   (rename-package :hunchentoot :hunchentoot '(:ht :tnbl))
@@ -15,7 +15,7 @@
   (with-output-to-string (s)
     (json:encode-json lisp s)))
 
-(defvar *cols* (mkhash "home" (t::make-col :name "home" :root-dir "/home/arno" :preset :IMG)))
+(defvar *cols* (mkhash "home" (t::load-col "/home/arno" "home")))
 
 (defmacro defjs (name &rest body)
   `(defun ,(symb "JS-" name) ()
@@ -37,30 +37,31 @@
                ; Place favicon.ico & apple-touch-icon.png in the root of your domain and delete these references (?)
                ; (:link :rel "shortcut icon"    :href "/favicon.ico")
                (:link :rel "stylesheet" :type "text/css" :href (full-url "/style.css"))
-               ; (:link :rel "apple-touch-icon" :href "/apple-touch-icon.png"))
+               ; (:link :rel "apple-touch-icon" :href "/apple-touch-icon.png")
+               )
         (:body 
-	   (:div :id "lightbox"
-	         (:input :placeholder "Tags, dates...")
-	         (:div :id "thumbs" :contextmenu "thumbmenu" ""))
-     (:menu :type "context" :id "thumbmenu"
-	          (:menu :label "Add tag..." :icon "/images/share_icon.gif"
-                   (:menuitem :label "X" :icon "/images/twitter_icon.gif" :onclick "add")
-                   (:menuitem :label "New tag..." :icon "/images/facebook_icon16x16.gif" :onclick "")))
-	   (:div :id "viewer"
-	   	 (:div :id "viewer-controls"
-	   	       (:div :id "viewer-back" "Back")
-	   	       (:div :id "viewer-previous" "Previous")
-	   	       (:div :id "viewer-next" "Next")
-	   	       (:div :id "viewer-fit" "Fit"))
-	   	 (:div :id "viewport"
-	   	       (:div :id "viewer-image"
-	   		   (:img :src "/pics/home/3790"))))
-	   (:script :type "text/javascript" :src (full-url "/js/jquery-1.10.2.min.js") "")
-	   (:script :type "text/javascript" :src (full-url "/js/jquery.panzoom.min.js") "")
-	   (:script :type "text/javascript" :src (full-url "/js/contextMenu.min.js") "")
-	   (:script :type "text/javascript" :src (full-url "/js/jquery.binarytransport.js") "")
-	   (:script :type "text/javascript" :src (full-url "/js/lb.js") "")
-	   (:script :type "text/javascript" (js-interface)))))))
+           (:div :id "lightbox"
+                 (:input :id "searchinput" :placeholder "Tags, dates...")
+                 (:div :id "thumbs" :contextmenu "thumbmenu" ""))
+           (:menu :type "context" :id "thumbmenu"
+                  (:menu :label "Add tag..." :icon "/images/share_icon.gif"
+                         (:menuitem :label "X" :icon "/images/twitter_icon.gif" :onclick "add")
+                         (:menuitem :label "New tag..." :icon "/images/facebook_icon16x16.gif" :onclick "")))
+           (:div :id "viewer"
+                 (:div :id "viewer-controls"
+                       (:div :id "viewer-back" "Back")
+                       (:div :id "viewer-previous" "Previous")
+                       (:div :id "viewer-next" "Next")
+                       (:div :id "viewer-fit" "Fit"))
+                  (:div :id "viewport"
+                        (:div :id "viewer-image"
+                              (:img :src "/pics/home/3790"))))
+           (:script :type "text/javascript" :src (full-url "/js/jquery-1.10.2.min.js") "")
+           (:script :type "text/javascript" :src (full-url "/js/jquery.panzoom.min.js") "")
+           (:script :type "text/javascript" :src (full-url "/js/contextMenu.min.js") "")
+           (:script :type "text/javascript" :src (full-url "/js/jquery.binarytransport.js") "")
+           (:script :type "text/javascript" :src (full-url "/js/lb.js") "")
+           (:script :type "text/javascript" (js-interface))))))
 
 (defun full-url (url)
   (if (boundp 'ht:*request*)
@@ -98,7 +99,7 @@
             (panzoom))
      (chain ($ window)
 	    (resize (lambda () (chain ($ "#viewer-image")
-                                 (panzoom "resetDimensions")))))
+                           (panzoom "resetDimensions")))))
      (chain ($ "body")
             (on "click"
             	 ".thumb-box img"
@@ -122,16 +123,17 @@
                                               (newhtml ""))
                                           (loop for i from 0 below (length bres)
                                              do (loop for j from 0 to 7
-                                                      do (when (= (logand (ash (aref bres i) -1)
+                                                      do (when (= (logand (ash (aref bres i) (- j))
                                                                           1)
                                                                   1)
                                                            (setf newhtml (+ newhtml
-                                                                            "<div class='thumb-box'><img data-src='"
-                                                                            (aref bres i)
+                                                                            "<div class='tb'><img data-src='"
+                                                                            (+ (* 8 i) j)
                                                                             "'></div>")))))
                                           (chain ($ "#thumbs") (empty))
                                           (chain ($ newhtml)
-                                                 (append-to ($ "#thumbs")))))
+                                                 (append-to ($ "#thumbs")))
+                                          (updatelb)))
                      "dataType" "binary"
                      "responseType" "arraybuffer"))
      (initlb ($ "#thumbs") ($ window)))
@@ -151,7 +153,8 @@
 	 (id {elts -1})
 	 (img (t:id-file {*cols* colname} id)))
     (unless img (web-404))
-    (setf (ht:content-type*) (str "image/" (t:extension img)))
+    (setf (ht:content-type*) (str "image/" (t:extension img))
+          (ht:header-out :expires) (ht:rfc-1123-date (+ (get-universal-time) 300)))
     (gulp (get-thumb-path img) :binary t)))
 
 (defun thumb-relpath (filename &key large)
@@ -164,26 +167,26 @@
   (gd:with-image-from-file (image filename)
     (let* ((owidth  (gd:image-width  image))
            (oheight (gd:image-height image))
-	   (maxwidth (if large 256 128))
-	   (maxheight maxwidth))
+           (maxwidth (if large 256 128))
+           (maxheight maxwidth))
       (when (and (< owidth (* 1.05 maxwidth))
-		 (< oheight (* 1.05 maxheight))) ; 5% tolerance on size (let's not generate thumbnails needlessly)
-         (return-from get-thumb-path filename))
+                 (< oheight (* 1.05 maxheight))) ; 5% tolerance on size (let's not generate thumbnails needlessly)
+        (return-from get-thumb-path filename))
       (awhen (shared-thumb-path filename :large large)
-	(when (thumb-usable-p filename it)
-         (return-from get-thumb-path it)))
+             (when (thumb-usable-p filename it)
+               (return-from get-thumb-path it)))
       (let ((home-thumb-path (home-thumb-path filename :large large)))
-	(when (and home-thumb-path
-		   (thumb-usable-p filename home-thumb-path))
-	   (return-from get-thumb-path home-thumb-path))
-	(sh (str "convert -thumbnail " maxwidth
-		 " -set Thumb::MTime '" (- (file-write-date filename) 2208988800) "'"
-		 " -set Thumb::URI 'file://" filename "'"
-		 " 'file://" filename "'"
-		 " '" home-thumb-path "'"))
-	;TODO: optipng / pngquant
-	home-thumb-path))))
- 
+        (when (and home-thumb-path
+                   (thumb-usable-p filename home-thumb-path))
+          (return-from get-thumb-path home-thumb-path))
+        (sh (str "convert -thumbnail " maxwidth
+                 " -set Thumb::MTime '" (- (file-write-date filename) 2208988800) "'"
+                 " -set Thumb::URI 'file://" filename "'"
+                 " 'file://" filename "'"
+                 " '" home-thumb-path "'"))
+        ;TODO: optipng / pngquant
+        home-thumb-path))))
+
 (defun home-thumb-path (filename &key large)
   (str (getenv "HOME")
        "/.thumbnails/"
@@ -230,10 +233,11 @@
 (defun api-list-files ()
   (let* ((elts (remove "" (split "/" (ht:request-uri*))))
          (colname {elts -1})
-         (tags (separate [char= {_ 0} #\-]
-                         (split "," (ht:get-parameter "tags")))))
+         (tags (separate [and (> (length _) 0)
+                              (char= {_ 0} #\-)]
+                         (remove "" (split "," (or (ht:get-parameter "tags") "") ) :test #'string=))))
     (setf (ht:content-type*) "application/binary")
-    (t::bitseq-to-byteseq (t:list-files {*cols* colname} :-tags {tags 0} :+tags {tags 1} :format :bitseq))))
+    (t::bitseq-to-byteseq (t:list-files {*cols* colname} :-tags {tags 0} :+tags {tags 1} :format :bitseq :limit 200))))
 
 (defun start ()
 ;  (t:update-master-index {*cols* "home"})
@@ -250,6 +254,5 @@
             (ht:create-prefix-dispatcher                    "/contact" 'page-contact)
             (ht:create-folder-dispatcher-and-handler        "/js/" "js/")
             (ht:create-regex-dispatcher "^/$"               'web-index)
-            (ht:create-prefix-dispatcher ""                 'web-404) 
-            ))
+            (ht:create-prefix-dispatcher ""                 'web-404)))
 

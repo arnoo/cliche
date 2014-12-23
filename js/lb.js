@@ -1,63 +1,88 @@
+//TODO: closure wrapping, allow non-window viewport
 var settings = { 'delay' : 200, 'bufferPages' : 1 , 'placeholder' : "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsQAAA7EAZUrDhsAAAANSURBVBhXYzh8+PB/AAffA0nNPuCLAAAAAElFTkSuQmCC", 'srcTransform' : function (x) { return "/thumbs/home/"+x } };
 var cols;
+var imgs;
 var pending = {};
-var timeoutHandle;
+var failed = {};
+var done = {};
+var updateTimeoutHandle;
+var preloadTimeoutHandle;
 var container, viewport;
 
 function deferUpdate() {
-    if (timeoutHandle!==undefined)
-	window.clearTimeout(timeoutHandle);
-    timeoutHandle = window.setTimeout(update, settings.delay);
+    if (updateTimeoutHandle!==undefined)
+	window.clearTimeout(updateTimeoutHandle);
+    updateTimeoutHandle = window.setTimeout(update, settings.delay);
     return true;
 }
 
-function load() {
-    var self = this;
-    var img = $(self);
-    console.log("loading"+img.data("src"));
-    img.attr("src", settings.srcTransform ? settings.srcTransform(img.data("src")) : img.data("src"));
-    pending[self] = true;
-    img.load(function () {delete(pending[self])});
+function load(imgIdx) {
+    var img = imgs[imgIdx];
+    var src = img.getAttribute("data-src");
+    console.log("loading "+src);
+    if (failed[imgIdx]!==undefined || done[imgIdx]!==undefined || pending[imgIdx]!==undefined) { return };
+    img.setAttribute("src", settings.srcTransform ? settings.srcTransform(img.getAttribute("data-src")) : img.getAttribute("data-src"));
+    pending[src] = true;
+    img.addEventListener('load', function () {delete(pending[imgIdx]); done[imgIdx] = true});
+    img.addEventListener('error', function () {failed[imgIdx]=true});
 }
 
-function unload(img) {
-    if (!img) { img = $(this); }
-    console.log("unloading"+img.data("src"));
-    img.attr("src", settings.placeholder);
+function unload(imgIdx) {
+    var img = imgs[imgIdx];
+    var src = img.getAttribute("data-src");
+    console.log("unloading "+src);
+    delete(done[imgIdx]);
+    img.setAttribute("src", settings.placeholder);
 }
 
 function update() {
-    var firstPicBox = container.find("div:first-child");
-    var picWidth = firstPicBox.width();
-    var picHeight = firstPicBox.width();
-    cols = Math.floor(viewport.width()/picWidth);
-    var linesPerPage = Math.floor(viewport.height()/picHeight);
+    var firstPicBox = container.querySelector("div:first-child");
+    var picWidth = firstPicBox.offsetWidth;
+    var picHeight = firstPicBox.offsetHeight;
+    cols = Math.floor(container.offsetWidth/picWidth);
+    var linesPerPage = Math.floor(viewport.offsetHeight/picHeight);
 
-    var firstVisibleLine = Math.floor((viewport.scrollTop()-container.offset().top-60)/picHeight);
-    var lastVisibleLine = Math.floor((viewport.scrollTop()-container.offset().top-60+viewport.height())/picHeight);
+    var firstVisibleLine = Math.floor(-container.getBoundingClientRect().top/picHeight);
+    var lastVisibleLine = Math.floor((viewport.innerHeight-container.getBoundingClientRect().top)/picHeight);
 
-    for (i in pending) {if (pending[i]) unload($(i))};
+    for (i in pending) {if (pending[i]) unload(i)};
+
+    if (preloadTimeoutHandle!==undefined)
+	window.clearTimeout(preloadTimeoutHandle);
 
     maplines(firstVisibleLine, lastVisibleLine, load);
-    maplines(lastVisibleLine, lastVisibleLine+linesPerPage*settings.bufferPages, load);
-    maplines(firstVisibleLine-linesPerPage*settings.bufferPages, firstVisibleLine, load);
+
+    preloadTimeoutHandle = window.setTimeout(function () {
+						maplines(lastVisibleLine, lastVisibleLine+linesPerPage*settings.bufferPages, load);
+						maplines(firstVisibleLine-linesPerPage*settings.bufferPages, firstVisibleLine, load);
+						}, settings.delay);
     
     maplines(0, firstVisibleLine-linesPerPage*settings.bufferPages, unload);
     maplines(firstVisibleLine-linesPerPage*settings.bufferPages, unload);
-
 }
 
 function maplines(from, to, fn) {
     if (from>=to) return;
-    var fromSelector = from===0 ? "" : ":gt("+(from*cols-1)+")";
-    $("#thumbs img"+fromSelector+":lt("+to*cols+")").each(fn);
+    for (var i=from*cols; i<=Math.min(to*cols, imgs.length-1); i++) {
+	fn(i);
+    }
+}
+
+function updatelb() {
+    imgs = container.querySelectorAll("img");
+    for (var i=0; i<imgs.length; i++) {
+	imgs[i].setAttribute("src", settings.placeholder);
+    }
+    pending = {};
+    failed = {};
+    done = {};
 }
 
 function initlb(_container, _viewport) {
-    container = _container;
-    viewport = _viewport;
-    container.find("img").attr("src", settings.placeholder);
-    viewport.scroll(deferUpdate);
-    $(window).resize(deferUpdate);
-    update();
+    container = _container.jQuery!==undefined ? _container : _container.get(0);
+    viewport = _viewport.jQuery!==undefined ? _viewport : _viewport.get(0);
+    viewport.addEventListener('scroll', deferUpdate);
+    updatelb();
+    window.addEventListener('resize', deferUpdate);
+    deferUpdate();
 }
